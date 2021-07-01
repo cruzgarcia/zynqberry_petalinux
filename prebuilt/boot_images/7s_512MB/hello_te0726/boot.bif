@@ -1,0 +1,6 @@
+the_ROM_image:
+{
+    [bootloader]../../../software/7s_512MB/fsbl.elf
+    ../../../hardware/7s_512MB/zynqberrydemo2_7s_512MB.bit
+    ../../../software/7s_512MB/hello_te0726.elf
+}
