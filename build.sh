@@ -1,5 +1,16 @@
 #!/bin/bash
 
+cd tcl
+echo ""
+echo "*** Building Vivado Project ***"
+vivado -mode batch -source vivado_build.tcl -notrace
+echo "Done"
+
+
+exit 0
+
+
+
 # Petalinux tools should be in PATH
 
 project_name="zynqberryOS"
@@ -10,13 +21,13 @@ echo "Creating project " $project_name
 petalinux-create --type project --template zynq --name $project_name
 
 # Copy predefined configurations
-cp -r $configs $project_name/project-spec
+#cp -r $configs $project_name/project-spec
 
 # Configure
 echo ""
 echo "Running petalinux build..."
 cd $project_name
-petalinux-config --silentconfig --get-hw-description ../prebuilt/
+#petalinux-config --silentconfig --get-hw-description ../prebuilt/
 
 #echo "Running kernel config"
 #petalinux-config -c kernel --oldconfig
