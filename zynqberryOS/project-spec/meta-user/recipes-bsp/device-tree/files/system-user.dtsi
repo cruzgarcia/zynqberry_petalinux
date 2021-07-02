@@ -1,0 +1,19 @@
+/include/ "system-conf.dtsi"
+/ {
+};
+
+/* USB Phy */
+
+/{
+    usb_phy0: usb_phy@0 {
+        compatible = "ulpi-phy";
+        reg = <0xe0002000 0x1000>;
+        view-port = <0x0170>;
+        drv-vbus;
+    };
+};
+
+&usb0 {
+    dr_mode = "host";
+    usb-phy = <&usb_phy0>;
+};
