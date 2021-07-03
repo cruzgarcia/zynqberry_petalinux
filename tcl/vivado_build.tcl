@@ -13,6 +13,7 @@ cd $vivado_folder
 
 # Set the reference directory for source file relative paths (by default the value is script directory path)
 set origin_dir "."
+puts "Origin dir $origin_dir"
 
 # Use origin directory path location variable, if specified in the tcl shell
 if { [info exists ::origin_dir_loc] } {
@@ -20,7 +21,7 @@ if { [info exists ::origin_dir_loc] } {
 }
 
 # Set the project name
-set _xil_proj_name_ "zynqberry_petalinux"
+set _xil_proj_name_ $project_name
 
 # Use project name variable, if specified in the tcl shell
 if { [info exists ::user_project_name] } {
@@ -76,13 +77,17 @@ if { $::argc > 0 } {
 }
 
 # Set the directory path for the original project from where this script was exported
-set orig_proj_dir "[file normalize "$origin_dir/../vivado"]"
+set orig_proj_dir "[file normalize "$origin_dir/"]"
+
+puts "---> $orig_proj_dir"
 
 # Create project
-create_project ${_xil_proj_name_} ./${_xil_proj_name_} -part xc7z010clg225-1
+# create_project ${_xil_proj_name_} ./${_xil_proj_name_} -part xc7z010clg225-1
+create_project ${_xil_proj_name_} "." -part xc7z010clg225-1 -force
 
 # Set the directory path for the new project
-set proj_dir [get_property directory [current_project]]
+# set proj_dir [get_property directory [current_project]]
+set proj_dir "."
 
 # Set project properties
 set obj [current_project]
@@ -119,24 +124,45 @@ set_property "ip_repo_paths" "[file normalize "$origin_dir/../trenz/ip_lib"]" $o
 # Rebuild user ip_repo's index before adding any source files
 update_ip_catalog -rebuild
 
-# Set 'sources_1' fileset object
-set obj [get_filesets sources_1]
-set files [list \
- [file normalize "${origin_dir}/../trenz/bd/zsys/zsys.bd"] \
- [file normalize "${origin_dir}/../trenz/bd/zsys/hdl/zsys_wrapper.vhd"] \
-]
-add_files -norecurse -fileset $obj $files
+## --------------------------------
+## --------------------------------
+source ../tcl/zynq_bd.tcl
+## --------------------------------
+## --------------------------------
 
-# Set 'sources_1' fileset file properties for remote files
-set file "$origin_dir/../trenz/bd/zsys/zsys.bd"
-set file [file normalize $file]
+set file "[file normalize "$origin_dir/zynqberry_petalinux.srcs/sources_1/bd/zsys/zsys.bd"]"
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "registered_with_manager" -value "1" -objects $file_obj
 
-set file "$origin_dir/../trenz/bd/zsys/hdl/zsys_wrapper.vhd"
-set file [file normalize $file]
-set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
-set_property -name "file_type" -value "VHDL" -objects $file_obj
+
+# Create the HDL wrapper
+#make_wrapper -files [get_files    /media/veracrypt1/Projects/zynqberry/zynq_peta_test/vivado/bd/zsys/zsys.bd] -top
+#make_wrapper -files [get_files "[file normalize "$origin_dir/zsys/zsys.bd"]"] -top
+make_wrapper -files [get_files "[file normalize "$origin_dir/zynqberry_petalinux.srcs/sources_1/bd/zsys/zsys.bd"]"] -top
+#make_wrapper -files  "[file normalize "$origin_dir/zsys/zsys.bd"]" -top
+
+
+#add_files -norecurse [file normalize "${origin_dir}/zsys/hdl/zsys_wrapper.vhd"]
+add_files -norecurse [file normalize "${origin_dir}/zynqberry_petalinux.srcs/sources_1/bd/zsys/hdl/zsys_wrapper.vhd"]
+
+# Set 'sources_1' fileset object
+#set obj [get_filesets sources_1]
+#set files [list \
+# [file normalize "${origin_dir}/../trenz/bd/zsys/zsys.bd"] \
+# [file normalize "${origin_dir}/../trenz/bd/zsys/hdl/zsys_wrapper.vhd"] \
+#]
+#add_files -norecurse -fileset $obj $files
+
+# Set 'sources_1' fileset file properties for remote files
+#set file "$origin_dir/../trenz/bd/zsys/zsys.bd"
+#set file [file normalize $file]
+#set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+#set_property -name "registered_with_manager" -value "1" -objects $file_obj
+
+#set file "$origin_dir/../trenz/bd/zsys/hdl/zsys_wrapper.vhd"
+#set file [file normalize $file]
+#set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+#set_property -name "file_type" -value "VHDL" -objects $file_obj
 
 
 # Set 'sources_1' fileset file properties for local files
@@ -150,6 +176,8 @@ set_property -name "top" -value "zsys_wrapper" -objects $obj
 if {[string equal [get_filesets -quiet constrs_1] ""]} {
   create_fileset -constrset constrs_1
 }
+
+
 
 # Set 'constrs_1' fileset object
 set obj [get_filesets constrs_1]
@@ -518,3 +546,41 @@ move_dashboard_gadget -name {drc_1} -row 2 -col 0
 move_dashboard_gadget -name {timing_1} -row 0 -col 1
 move_dashboard_gadget -name {utilization_2} -row 1 -col 1
 move_dashboard_gadget -name {methodology_1} -row 2 -col 1
+
+
+
+
+
+# ===================================================================
+## Build the project
+# In future revisions these steps should be migrated into different TCL to target different 
+# build stages. For now all is tied together.
+# ===================================================================
+
+
+# Launch synthesis
+launch_runs synth_1 -jobs 18
+wait_on_run synth_1
+
+# Launch implementation
+set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
+launch_runs impl_1 -to_step write_bitstream -jobs 18
+wait_on_run impl_1 
+puts "Implementation done!"
+
+# Export the XSA, required later by Vitis
+open_run impl_1
+
+set_property -name "platform.board_id" -value "te0726_m" -objects $obj
+set_property -name "platform.default_output_type" -value "undefined" -objects $obj
+set_property -name "platform.design_intent.datacenter" -value "undefined" -objects $obj
+set_property -name "platform.design_intent.embedded" -value "undefined" -objects $obj
+set_property -name "platform.design_intent.external_host" -value "undefined" -objects $obj
+set_property -name "platform.design_intent.server_managed" -value "undefined" -objects $obj
+set_property -name "platform.rom.debug_type" -value "0" -objects $obj
+set_property -name "platform.rom.prom_type" -value "0" -objects $obj
+set_property -name "platform.slrconstraintmode" -value "0" -objects $obj
+
+write_hw_platform -fixed -force -include_bit "$project_name.xsa"
+
+puts "Vivado done"
