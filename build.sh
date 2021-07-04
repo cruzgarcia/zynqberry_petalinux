@@ -6,9 +6,16 @@ echo "*** Building Vivado Project ***"
 vivado -mode batch -source vivado_build.tcl -notrace
 echo "Done"
 
-
 exit 0
+# --------------------------------------------
+# TODO
 
+echo ""
+echo ""
+echo ""
+echo "*** Building Vitis Project ***"
+xsct vitis_build.tcl
+echo "Done"
 
 
 # Petalinux tools should be in PATH
